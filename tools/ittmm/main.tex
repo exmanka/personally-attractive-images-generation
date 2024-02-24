@@ -1,0 +1,299 @@
+\documentclass[60x84/16,8pt]{ittmm}
+
+\input{definition}
+
+\begin{document}
+
+% Укажите индекс УДК, соответствующий Вашей работе.
+% Рукопись должна содержать УДК, который рекомендуется брать из следующего источника: \url{http://www.mathnet.ru/udc.pdf}.
+\udc{004.8}
+
+\title{Разработка и исследование модели для генерации субъективно привлекательных лиц людей}
+
+\author[1,2]{М. А. Ким}
+\author[1]{М. В. Хачумов}
+
+\address[1]{Кафедра математического моделирования и искусственного интеллекта,\\
+  Российский университет дружбы народов,\\
+  ул. Миклухо-Маклая, д.6, Москва, Россия, 117198}
+
+\email{\url{1032201664@pfur.ru}}
+
+\begin{abstract}
+Когнитивные способности человека позволяют осуществлять восприятие, анализ и внешнюю оценку собеседника.
+При этом объяснение субъективной оценки внешности нельзя назвать тривиальной задачей.
+Помимо известных общих закономерностей, таких как принципы геометрии лица, социальный и культурный опыт оценивающего,
+каждому человеку присуще комплексные индивидуальные факторы, влияющие на субъективное понимание красоты.
+Настоящая статья посвящена задаче построения модели машинного обучения, способной в соответствии с обратной
+связью от пользователя генерировать субъективно привлекательные лица людей. Предполагается, что такая модель
+поможет в изучении процесса формирования человеком оценки привлекательности лиц и выявлении индивидуальных факторов,
+влияющих на данный показатель. В работе рассмотрен сервис, предоставляющий пользователю последовательный выбор наиболее привлекательных изображений,
+созданных при помощи модели генеративно-состязательной сети (GAN). По окончании заданной длины последовательности изображений
+пользователю дается возможность оценить результирующие изображения на предмет привлекательности лиц по заданному показателю качества.
+Обучение нейронной сети производилось на датасете CelebA-HQ, который содержит 30000 1024×1024 изображений лиц знаменитостей.
+Для увеличения выборки пользователей сервис развернут в виде web-приложения и Telegram бота со свободным доступом, что позволяет
+собирать данные о сгенерированных результирующих изображениях. В статье даются выводы о качестве генерации изображений по мнению
+пользователей и о возможностях применения полученных результатов.
+\end{abstract}
+
+\keywords{изображения лиц, визуализация, генеративные состязательные сети, машинное обучение}
+
+\alttitle{Development and research of a model for generating subjectively attractive human faces}
+
+\altauthor[1,2]{M. A. Kim}
+\altauthor[1]{M. V. Khachumov}
+
+\altaddress[1]{Department of Information Technologies\\
+Peoples' Friendship University of Russia\\
+Miklukho-Maklaya str. 6, Moscow, 117198, Russia}
+
+\begin{altabstract}
+A person's cognitive capabilities allow for the perception, analysis, and external evaluation of others.
+At the same time, describing the subjective assessment of attractiveness cannot be considered a trivial task.
+In addition to well-established general patterns, including the principles of facial geometry and the social and cultural experiences of the evaluator,
+every person has complex, individual factors that influence their subjective understanding of attractiveness.
+This paper is focused on developing a machine learning model that can generate subjectively attractive human faces based on user feedback.
+It is hypothesized that such a model could be used to study the process of how a person forms their assessment of another's attractiveness
+and identify individual factors that contribute to this indicator. This study considers a service that offers users a consistent selection
+of the most appealing images generated using a generative adversarial network model.At the end of a specified length of sequence of images,
+users are given the opportunity to assess the resulting images based on the attractiveness of the faces using a given quality metric.
+The neural network has been trained on the CelebA-HQ dataset, which includes 30,000 images of celebrity faces with a resolution of 1024x1024 pixels.
+To increase the size of the user sample, the service has been deployed in the form of a web application and Telegram bot with free access.
+This allows users to collect data on the generated images.
+This article draws conclusions regarding the quality of the image generation based on user feedback and the potential applications of the results obtained.
+  
+\end{altabstract}
+
+\altkeywords{face images, visualization, generative adversarial networks, machine learning}
+
+\maketitle
+
+\section{Введение}
+\label{sec:intro}
+
+Каким образом возможно оценить красоту? Человек способен мгновенно классифицировать
+изображение как привлекательное и даже выразить степень красоты заданного объекта в соответствии с определенной метрикой.
+Однако, в большинстве случаев, невозможно произвести количественную оценку избранного решения.
+Особенно остро данный аспект проявляется при анализе и генерации человеческих лиц.
+
+Трудности исследования данного направления связаны в первую очередь с тем, что
+оценка привлекательности одного и того же объекта разными людьми может сильно различаться
+в виду, к примеру, возраста, культуры и пола оценивающего
+\cite{facial-attractiveness-1, facial-attractiveness-2, facial-attractiveness-3}.
+Безусловно, есть и общие закономерности, связывающие определенные черты лица
+и среднюю оценку его привлекательности, такие как его симметричность, приблизительно
+равная соотношению носа ко лбу и носа к подбородку \cite{facial-attractiveness-math-1}.
+Однако, в общем случае считается, что привлекательность -- скорее субъективная, личностная характеристика,
+нежели объективный фактор, справедливый для большинства людей.
+
+Создание визуально привлекательных изображений людей до сих пор
+является является сложной задачей в виду затруднительности описания
+концепции привлекательности. Большинство исследований в данной области
+направлены на выявление определенных закономерностей лица в соответствии
+с фотографией \cite{facial-attractiveness-math-2, facial-attractiveness-math-3, facial-attractiveness-math-4},
+однако, вероятно, подходы такого рода не позволяют объемлюще воспроизвести
+факторы, влияющие на субъективную оценку в виду сложности человеческих суждений
+относительно привлекательности. Модели, создающие изображения но основе данных
+факторов, не способны полностью отразить эстетическое восприятие человека \cite{attr-models-complicated}.
+Это связанно с тем, что генерация объектов ограниченна заданными
+общими закономерностями и не учитывает субъективные предпочтения человека.
+
+В данной статье представлен альтернативный метод созданию субъективно привлекательных
+изображений лиц людей на основе генеративно-состязательной нейронной сети (GAN) \cite{gan}, обученной на датасете CelebA-HQ.
+Коррекция в генерации лиц в соответствии с предпочтениями человека производится
+по принципу исследования тензора скрытого состояния нейронной сети \cite{latent-space-exploration}. 
+
+\section{Основная часть} 
+\label{sec:base-section}
+
+Основная часть работы должна отражать поэтапное подробное решение
+поставленной задачи и может содержать несколько разделов. Здесь
+проводятся доказательства и решения выдвинутых положений и задач,
+рассматриваются методы их решения, приводится наглядный иллюстративный
+материал в виде графиков, таблиц, диаграмм и т.~д.
+
+По требованиям организационного комитета конференции объём одной
+представляемой рукописи не должен превышать 3-х страниц. Авторы
+обязаны предъявлять повышенные требования к изложению и языку
+рукописи, а также подготовке иллюстративного и табличного материалов.
+Рукопись представляется на русском языке.  Рекомендуется безличная
+форма изложения.
+
+При оформлении рекомендуется пользоваться стандартными окружениями
+макропакета \LaTeXe.
+
+<<Ссылочный аппарат>> на формулы реализуется с помощью команд
+\verb"\label" и \verb"\eqref".\footnote{Нумероваться будут только те
+  формулы, на которые ссылка оформлена с помощью этих команд.}  В
+качестве примера приведём формулу
+\begin{equation}
+a^n+b^n=c^n
+\label{eq:Fermat's_Last_Theorem}
+\end{equation}
+и ссылку на неё \eqref{eq:Fermat's_Last_Theorem}.
+
+Рисунки в рукопись вставляются стандартными средствами \LaTeXe.  В
+качестве форматов рисунков рекомендуется использовать файлы типа
+\texttt{eps} или \texttt{pdf}, изображение должно быть качественным и
+векторным. Разрешение растровой графики должно быть не менее 600 dpi
+(лучше 1200 dpi). Шрифт на рисунках не должен быть менее 6 пунктов.
+Каждый рисунок должен быть подписан, для этого
+используется команда \verb"\caption". 
+Как пример см. рис.~\ref{fig:logo}.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.2\linewidth]{embl}
+  \caption{Эмблема}
+  \label{fig:logo}
+\end{figure}
+
+Ниже (см. табл.~\ref{tab:sampletable}) представлен вариант таблицы с
+заголовком оформленным с помощью \verb"\caption".
+
+\begin{table}
+  \centering
+  \caption{Пример небольшой таблицы}
+  \label{tab:sampletable}
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    Номер & $X$ & $Y$ & $R$ & Цвет\\
+    \hline
+    1 &     100  &  170 & 30 & красный\\
+    2 &     100  &  90      & 60 & жёлтый\\
+    3 &     230  &  250     & 50 & синий\\
+    4 &     130  &  240 & 60 & зелёный\\
+    5 & 300  &      130 & 30 & зелёный\\
+    6 &     200  &  150     & 90 & красный\\
+    \hline
+  \end{tabular}
+\end{table}
+
+Для ссылки на источники необходимо использовать команду \verb"\cite".
+
+Литература может формироваться либо с помощью программы \verb"bibtex",
+либо с помощью окружения \verb"thebibliography".
+При формировании списка литературы просьба использовать стандарт
+ГОСТ~Р7.0.5-2008. Примеры цитирования книги~\cite{mathtensor,
+  jones-fogelin:tcqd}, раздела в книге~\cite{Muller2006},
+статьи~\cite{Arduengo1991, Booth1962},
+материалов конференции~\cite{Hope2005}.
+
+На все источники в списке литературы должны быть ссылки.
+
+\section{Заключение}
+
+Заключение является неотъемлемой частью любой работы. 
+
+Оно должно содержать краткие выводы по результатам исследования,
+отражающие новизну и практическую значимость работы, предложения по
+использованию ее результатов, оценку её эффективности и качества.
+
+
+\begin{acknowledgments}
+  Работа частично поддержана грантом РФФИ
+  \textnumero~16-01-20379.\footnote{Этот раздел статьи может
+    отсутствовать.  В него рекомендуется добавлять сведения о
+    финансировании работы и выражать благодарности персонам.}
+\end{acknowledgments}
+
+
+\begin{thebibliography}{99}
+
+\bibitem{facial-attractiveness-1}
+M. R. Cunningham, A. R. Roberts, A. P. Barbee, P. B. Druen and C.-H. Wu.
+Their ideas of beauty are on the whole the same as ours. 
+--- Vol. 68, no. 2.
+
+\bibitem{facial-attractiveness-2}
+J. H. Langlois, J. M. Ritter, L. A. Roggman and L. S. Vaughn.
+Facial diversity and infant preferences for attractive faces. 
+--- Vol. 27, no. 1.
+
+\bibitem{facial-attractiveness-3}
+R. Thornhill and S. W. Gangestad.
+Facial attractiveness. 
+--- Vol. 3, no. 12. 
+--- P. 452-460.
+
+\bibitem{facial-attractiveness-math-1}
+K. Schmid, D. Marx and A. Samal.
+Computation of a face attractiveness index based on neoclassical canons, symmetry, and golden ratios. 
+--- Vol. 41, no. 8.
+
+\bibitem{facial-attractiveness-math-2}
+A. C. Little, B. C. Jones and L. M. DeBruine.
+Facial attractiveness: Evolutionary based research. 
+--- Vol. 366, no. 1571.
+--- P. 1638-1659.
+
+\bibitem{facial-attractiveness-math-3}
+D. Perrett, K. A. May and S. Yoshikawa.
+Facial shape and judgements of female attractiveness.
+--- Vol. 368.
+--- P. 239-242.
+
+\bibitem{facial-attractiveness-math-4}
+J. Shi, A. Samal and D. Marx.
+How effective are landmarks and their geometry for face recognition?. 
+--- Vol. 102, no. 2.
+--- P. 117-133.
+
+\bibitem{attr-models-complicated}
+M. Ibáñez-Berganza, A. Amico and V. Loreto.
+Subjectivity and complexity of facial attractiveness. 
+--- Vol. 9, no. 1.
+--- P. 1-12.
+
+\bibitem{gan}
+I. Goodfellow et al..
+Generative adversarial nets. 
+--- P. 2672-2680.
+
+\bibitem{latent-space-exploration}
+Huiting Yang, Liangyu Chai, Qiang Wen, Shuang Zhao, Zixun Sun and Shengfeng He.
+Discovering interpretable latent space directions of gans beyond binary attributes. 
+--- Vol. 33.
+
+
+
+% \bibitem{mathtensor}
+% L.~Parker, S.~M. Christensen, MathTensor: a system for doing tensor analysis by
+%   computer, Addison-Wesley, 1994.
+
+% \bibitem{jones-fogelin:tcqd}
+% W.~T. Jones, R.~J. Fogelin, The Twentieth Century to Quine and Derrida, A
+%   History of Western Philosophy, Harcourt Brace College Publishers, 1997.
+
+% \bibitem{Muller2006}
+% G.~M. Sheldrick, A Short History of SHELXL, International Union of
+%   Crystallography and Oxford University Press, 2006.
+
+% \bibitem{Arduengo1991}
+% A.~J. Arduengo, III, R.~L. Harlow, M.~Kline, A stable crystalline carbene,
+%   J.~Am. Chem. Soc. 113~(1)  361--363.
+% \newblock \href {http://dx.doi.org/10.1021/ja00001a054}
+%   {\path{doi:10.1021/ja00001a054}}.
+
+% \bibitem{Booth1962}
+% G.~Booth, J.~Chatt, The reactions of carbon monoxide and nitric oxide with
+%   tertiary phosphine complexes of iron({II}), cobalt({II}), and nickel({II}),
+%   J.~Chem. Soc.  2099--2106. \href {http://dx.doi.org/10.1039/JR9620002099}
+%   {\path{doi:10.1039/JR9620002099}}.
+
+% \bibitem{Hope2005}
+% E.~Hope, J.~Bennett, A.~Stuart, Fluorous zirconium phosphonates: novel
+%   inorganic supports for catalysis, in: Pacifichem (International Chemical
+%   Congress of Pacific Basin Societies), no. 961, Pacific Basin Chemical
+%   Societies.
+
+\end{thebibliography}
+
+
+% Возможно использовать bibtex.
+% \bibliographystyle{ugost2008l}
+% \bibliography{main}
+
+\makealttitle
+
+\end{document}
