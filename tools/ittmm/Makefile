@@ -7,8 +7,7 @@ all:
 	-pybtex $(FILE)
 	pdflatex $(FILE)
 	pdflatex $(FILE)
-	mkdir -p out
-	mv $(FILE).pdf out
+	mv $(FILE).pdf ../../doc/ittmm
 
 cleanall: clean
 
