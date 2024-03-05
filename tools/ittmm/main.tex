@@ -21,18 +21,18 @@
 \begin{abstract}
 Когнитивные способности человека позволяют осуществлять восприятие, анализ и внешнюю оценку собеседника.
 При этом объяснение субъективной оценки внешности нельзя назвать тривиальной задачей.
-Помимо известных общих закономерностей, таких как принципы геометрии лица, социальный и культурный опыт оценивающего,
+Помимо известных общих закономерностей, таких как принципы геометрии лица, а также социальный и культурный опыт оценивающего,
 каждому человеку присуще комплексные индивидуальные факторы, влияющие на субъективное понимание красоты.
-Настоящая статья посвящена задаче построения модели машинного обучения, способной в соответствии с обратной
-связью от пользователя генерировать субъективно привлекательные лица людей. Предполагается, что такая модель
-поможет в изучении процесса формирования человеком оценки привлекательности лиц и выявлении индивидуальных факторов,
-влияющих на данный показатель. В работе рассмотрен сервис, предоставляющий пользователю последовательный выбор наиболее привлекательных изображений,
-созданных при помощи модели генеративно-состязательной сети (GAN). По окончании заданной длины последовательности изображений
-пользователю дается возможность оценить результирующие изображения на предмет привлекательности лиц по заданному показателю качества.
-Обучение нейронной сети производилось на датасете CelebA-HQ, который содержит 30000 1024×1024 изображений лиц знаменитостей.
-Для увеличения выборки пользователей сервис развернут в виде web-приложения и Telegram бота со свободным доступом, что позволяет
-собирать данные о сгенерированных результирующих изображениях. В статье даются выводы о качестве генерации изображений по мнению
-пользователей и о возможностях применения полученных результатов.
+Настоящая статья посвящена задаче построения модели машинного обучения, способной в соответствии с обратной связью
+от пользователя генерировать субъективно привлекательные лица людей.
+Предполагается, что такая модель поможет в изучении процесса формирования человеком оценки привлекательности лиц
+и выявлении индивидуальных факторов, влияющих на данный показатель. В работе рассмотрено программное обеспечение,
+предоставляющее пользователю возможность последовательного выбора и оценки по заданному показателю качества наиболее
+привлекательных изображений из набора, созданного при помощи модели машинного обучения.
+По окончании заданной длины последовательности изображений пользователю предоставляется возможность
+оценить результирующее изображение на предмет привлекательности лица.
+Средняя оценка выбранных в наборе изображений сравнивается с оценкой результирующего изображения.
+В статье даются выводы о качестве генерации изображений по мнению пользователей и о возможностях применения полученных результатов.
 \end{abstract}
 
 \keywords{изображения лиц, визуализация, генеративные состязательные сети, машинное обучение}
@@ -46,20 +46,19 @@ Peoples' Friendship University of Russia\\
 Miklukho-Maklaya str. 6, Moscow, 117198, Russia}
 
 \begin{altabstract}
-A person's cognitive capabilities allow for the perception, analysis, and external evaluation of others.
-At the same time, describing the subjective assessment of attractiveness cannot be considered a trivial task.
-In addition to well-established general patterns, including the principles of facial geometry and the social and cultural experiences of the evaluator,
-every person has complex, individual factors that influence their subjective understanding of attractiveness.
-This paper is focused on developing a machine learning model that can generate subjectively attractive human faces based on user feedback.
-It is hypothesized that such a model could be used to study the process of how a person forms their assessment of another's attractiveness
-and identify individual factors that contribute to this indicator. This study considers a service that offers users a consistent selection
-of the most appealing images generated using a generative adversarial network model.At the end of a specified length of sequence of images,
-users are given the opportunity to assess the resulting images based on the attractiveness of the faces using a given quality metric.
-The neural network has been trained on the CelebA-HQ dataset, which includes 30,000 images of celebrity faces with a resolution of 1024x1024 pixels.
-To increase the size of the user sample, the service has been deployed in the form of a web application and Telegram bot with free access.
-This allows users to collect data on the generated images.
-This article draws conclusions regarding the quality of the image generation based on user feedback and the potential applications of the results obtained.
-  
+A person's cognitive abilities enable perception, analysis, and external evaluation of the interlocutor.
+At the same time, the subjective assessment of attractiveness cannot be considered a trivial task.
+In addition to well-established general patterns, such as facial geometry principles, as well as social and cultural experiences of the evaluator,
+each person has complex individual factors that influence subjective understanding of beauty.
+This article aims to develop a machine learning model that can utilize feedback from the user
+to produce subjectively attractive faces. It is assumed that such a model would assist in examining
+the formation of a person's evaluation of attractiveness and identifying individual factors influencing
+this indicator. This paper discusses software that provides the user with an opportunity to consistently
+select and evaluate the most attractive individuals.Attractive images generated using a machine learning
+model based on a given quality metric. At the end of a specified sequence of images, users are given the
+opportunity to evaluate the facial attractiveness of the final image. The average score of images selected
+from the set is then compared to the score of the generated image. The article concludes on the basis of user
+feedback and the potential applications of the generated results.
 \end{altabstract}
 
 \altkeywords{face images, visualization, generative adversarial networks, machine learning}
@@ -100,13 +99,13 @@ This article draws conclusions regarding the quality of the image generation bas
 изображений лиц людей на основе генеративно-состязательной нейронной сети (GAN) \cite{gan},
 обученной на датасете CelebA-HQ \cite{celeba-hq}.
 Коррекция в генерации лиц в соответствии с предпочтениями человека производится
-на основе анализа тензора скрытого состояния нейронной сети \cite{latent-space-exploration}. 
+на основе анализа скрытого пространства (latent space) нейронной сети \cite{latent-space-exploration}. 
 
 \section{Построение модели} 
 \label{sec:base-section}
 
-Предлагаемая архитектура модели представляет собой модификацию
-сверточной генеративно-состязательной сети глубокого обучения (DCGAN) \cite{dcgan}.
+Предлагаемая архитектура модели представляет собой сверточную
+генеративно-состязательную сеть глубокого обучения (DCGAN) \cite{dcgan}.
 DCGAN является прямым продолжением развития архитектуры GAN: модель также 
 состоит из двух нейронных сетей, генератора и дискриминатора, обучаемых независимо друг от друга.
 Генератор создает изображения, основываясь на векторе случайных чисел с плавающей точкой,
@@ -134,8 +133,8 @@ DCGAN является прямым продолжением развития а
 Данная модификация позволяет улучшить качество результирующих изображений при использовании
 множества скрытых слоев в нейронной сети.
 
-Предлагаемая в статье модификация DCGAN содержит вектор скрытого состояния
-в генераторе, что позволяет создавать новые изображения на основе усреднения
+Возможность использования векторной арифметики
+в скрытом пространстве генератора позволяет создавать новые изображения на основе усреднения
 векторов скрытого состояния целевых изображений, генерируя тем самым лица,
 совмещающие в себе черты целевых изображений.
 
@@ -161,7 +160,8 @@ DCGAN является прямым продолжением развития а
 \section{Внедрение и оценка модели}
 \label{sec:base-section}
 
-Примеры генерации лиц со случайным входным тензором показаны на рис. \ref{fig:result-random-seed}.
+Примеры генерации лиц со скрытым пространством, заполненным случайно в соответствии с нормальным распределением,
+показаны на рис. \ref{fig:result-random-seed}.
 
 \begin{figure}
   \centering
@@ -170,19 +170,19 @@ DCGAN является прямым продолжением развития а
   \label{fig:result-random-seed}
 \end{figure}
 
-Пример усреднения вектора скрытого состояния показан на рис. \ref{fig:interpolation}, где изображение слева
-получено путем усреднения векторов скрытого состояния остальных изображений.
+Пример усреднения вектора скрытого пространства показан на рис. \ref{fig:interpolation}, где изображение слева
+получено путем усреднения векторов скрытого пространства остальных изображений.
 
 \begin{figure}
   \centering
   \includegraphics[width=0.8\linewidth]{interpolation}
-  \caption{Усреднение векторов скрытого состояния}
+  \caption{Усреднение векторов скрытого пространства}
   \label{fig:interpolation}
 \end{figure}
 
 Предположение, выдвигаемое настоящей статьей, полагает, что при выборе участником исследования
 нескольких субъективно привлекательных изображений и усреднении их векторов скрытых
-состояний в виде нового тензора, можно сгенерировать изображение,
+пространств в виде нового вектора, можно сгенерировать изображение,
 являющееся более привлекательным для участника исследования по сравнению с избранными ранее
 изображениями.
 
@@ -227,22 +227,20 @@ DCGAN является прямым продолжением развития а
 исследования его участниками отмечалось, что предоставленные изображения
 лиц не похожи на настоящии фотографии людей. В следствии этого,
 нельзя назвать выдвигаемую гипотезу доказанной, не смотря на тот факт,
-что исследование показывает определенный положительный результат.
+что исследование показывает некоторый положительный результат.
 
 Для последующего доказательства гипотезы следует использовать
 значительно более сложные предобученные модели машинного обучения
 по типу StyleGAN3 \cite{stylegan} и Stable Diffusion \cite{sd}, что позволит генерировать
 действительно фотореалистичные изображения лиц людей, а также
 предоставит большую возможность в исследовании влияния вектора скрытого
-состояния модели.
+пространства модели.
 
 \section{Заключение}
 
 В настоящей работе рассмотрен метод генерации субъективно привлекательных лиц людей
-путем усреднения векторов скрытого состояния сверточной
-генеративно-состязательной сети глубокого обучения. Ранее данный
-метод не применялся в области создания человеческих лиц с
-использованием DCGAN. Дальнейшее исследование вектора скрытого состояния
+путем усреднения векторов скрытого пространства сверточной
+генеративно-состязательной сети глубокого обучения. Дальнейшее исследование скрытого пространства
 может помочь в выявлении комплексных факторов, влияющих на субъективную
 оценку внешности человеком.
 
