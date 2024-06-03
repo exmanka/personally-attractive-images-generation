@@ -51,6 +51,14 @@ services:
     restart: unless-stopped
     networks:
       - app-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ipc: host
 
 networks:
   app-net:
