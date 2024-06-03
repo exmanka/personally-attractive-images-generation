@@ -40,7 +40,7 @@ services:
     networks:
       - app-net
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - /var/lib/postgresql-docker:/var/lib/postgresql/data
       - ./database/build/init-database.sql:/docker-entrypoint-initdb.d/init-database.sql
 
   stylegan-generator:

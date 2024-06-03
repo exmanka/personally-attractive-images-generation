@@ -7,7 +7,7 @@ from PIL import Image
 
 
 MODEL_PATH = './res'
-MODEL_NAME = 'stylegan3-r-ffhqu-256x256.pkl'
+MODEL_NAME = 'stylegan3-r-ffhq-1024x1024.pkl'
 CLASS_LABEL = None
 
 
@@ -25,4 +25,4 @@ def generate_image(seed) -> Image.Image:
     generated_image_processed = 0.5 * generated_image_processed + 0.5
 
 
-    return Image.fromarray(generated_image_processed[0], 'RGB')
+    return Image.fromarray((generated_image_processed[0] * 255).astype(np.uint8), 'RGB')
