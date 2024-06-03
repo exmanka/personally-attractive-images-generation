@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 
 
-MODEL_PATH = '../../res'
+MODEL_PATH = './res'
 MODEL_NAME = 'stylegan3-r-ffhq-1024x1024.pkl'
 CLASS_LABEL = None
 
