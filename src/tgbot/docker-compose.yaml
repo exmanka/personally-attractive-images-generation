@@ -1,0 +1,59 @@
+services:
+  tgbot:
+    build:
+      context: ./bot
+      dockerfile: ./build/Dockerfile
+    container_name: tgbot
+    restart: unless-stopped
+    env_file:
+      - ./bot/.env
+      - ./database/.env
+    ports:
+      - 80:80
+      - 443:443
+      - 88:88
+      - 8443:8443
+    networks:
+      - app-net
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    build:
+      context: ./database
+      dockerfile: ./build/Dockerfile
+      args:
+        ADDITIONAL_LANGUAGE: ${ADDITIONAL_LANGUAGE}
+    container_name: database
+    restart: unless-stopped
+    env_file:
+      - ./database/.env
+    ports:
+      - 5500:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+      start_interval: 1s
+    networks:
+      - app-net
+    volumes:
+      - /var/lib/postgresql-docker:/var/lib/postgresql/data
+      - ./database/build/init-database.sql:/docker-entrypoint-initdb.d/init-database.sql
+
+  stylegan-generator:
+    build:
+      context: ./stylegan
+      dockerfile: ./build/Dockerfile
+    container_name: stylegan-generator
+    restart: unless-stopped
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    name: app-net
+    driver: bridge
