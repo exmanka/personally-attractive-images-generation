@@ -7,7 +7,7 @@ from PIL import Image
 
 
 MODEL_PATH = './res'
-MODEL_NAME = 'stylegan3-r-ffhq-1024x1024.pkl'
+MODEL_NAME = 'stylegan3-r-ffhqu-256x256.pkl'
 CLASS_LABEL = None
 
 
