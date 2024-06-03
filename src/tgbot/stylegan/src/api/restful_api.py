@@ -19,10 +19,10 @@ class StatusEnum(Enum):
     error = 'error'
 
 
-class PatternAlgo(BaseModel):
-    status: StatusEnum
-    data: object | None = None
-    details: str | None = None
+# class PatternAlgo(BaseModel):
+#     status: StatusEnum
+#     data: object | None = None
+#     details: str | None = None
 
 
 app = FastAPI(
