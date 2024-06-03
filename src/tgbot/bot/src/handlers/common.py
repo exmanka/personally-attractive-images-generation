@@ -55,7 +55,7 @@ async def generation_stylegan(msg: Message):
     FONT = ImageFont.load_default()
     SPACING_SIZE = 10
     BORDER_SIZE = SPACING_SIZE // 4
-    FONT = ImageFont.load_default(32)
+    FONT = ImageFont.load_default(48)
         
 
     images_list: list[Image.Image] = []
