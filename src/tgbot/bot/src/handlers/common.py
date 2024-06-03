@@ -54,7 +54,7 @@ async def generation_stylegan(msg: Message):
     TEXT_FILL = (255, 255, 255)
     FONT = ImageFont.load_default()
     SPACING_SIZE = 10
-    BORDER_SIZE = SPACING_SIZE // 2
+    BORDER_SIZE = SPACING_SIZE // 4
     FONT = ImageFont.load_default(32)
         
 

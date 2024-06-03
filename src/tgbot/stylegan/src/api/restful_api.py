@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from enum import Enum
 from PIL import Image
+from src.model import stylegan
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,8 @@ async def get_portfolio(seed: UploadFile = File(...)):
     try:
         content = await seed.read()
         seed_array = np.frombuffer(content, dtype=np.float32)
-        image = Image.new('RGB', (500, 500), color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
+        image = stylegan.generate_image(seed_array)
+        # image = Image.new('RGB', (500, 500), color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
