@@ -3,7 +3,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import pickle
 import torch
 import numpy as np
-from dep import dnnlib, torch_utils
 from PIL import Image
 
 
