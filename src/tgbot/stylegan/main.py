@@ -8,10 +8,11 @@ def main():
 
 if __name__ == '__main__':
     # Add logging
-    # logging.basicConfig(handlers=[logging.FileHandler('algo.log'), logging.StreamHandler()],
-    #                     level=logging.INFO,
-    #                     format='[%(asctime)s: %(levelname)s: %(name)s] %(message)s',
-    #                     datefmt='%Y-%m-%d %H:%M:%S',
-    #                     encoding='utf-8')
+    file_handler = logging.FileHandler('stylegan.log', encoding='utf-8')
+    stream_handler = logging.StreamHandler()
+    logging.basicConfig(handlers=[file_handler, stream_handler],
+                        level=logging.INFO,
+                        format="[%(asctime)s: %(levelname)s: %(name)s] %(message)s",
+                        datefmt="%Y-%m-%d %H:%M:%S")
 
     main()

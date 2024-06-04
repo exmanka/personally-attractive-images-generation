@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import datetime
+import numpy as np
 from io import BytesIO
 from babel import dates
 from PIL import Image, ImageDraw, ImageFont
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 async def get_generated_image(model: str,
-                              seed: list[float],
+                              seed: np.ndarray,
                               resize_ratio: int = 2) -> Image.Image:
     """Get generated image by API according to model by specified seed.
 
@@ -45,16 +46,18 @@ async def get_generated_image(model: str,
 async def draw_image_number(image: Image.Image,
                             number: int,
                             text_size: int = 16,
+                            font_size: int = 48,
                             text_fill: tuple = (255, 255, 255)) -> Image.Image:
     """Draw number on picture.
 
     :param image: image where draw
     :param number: number to draw
     :param text_size: size of the text, defaults to 16
+    :param font_size: size of the font, defaults to 48
     :param text_fill: color of the text, defaults to (255, 255, 255)
     """
     draw = ImageDraw.Draw(image)
-    draw.text((text_size, text_size), str(number), fill=text_fill, font=ImageFont.load_default())
+    draw.text((text_size, text_size), str(number), fill=text_fill, font=ImageFont.load_default(font_size))
 
     return image
 

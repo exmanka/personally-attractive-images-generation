@@ -65,14 +65,14 @@ async def generation_fsm_start(msg: Message, state: FSMContext):
     
     if msg.text == loc.common.btns['model_dcgan']:
         await state.set_state(common_fsm.Model.generation_dcgan)
-        seed_size = (1, 100)
+        seed_size = 100
     elif msg.text == loc.common.btns['model_stylegan']:
         await state.set_state(common_fsm.Model.generation_stylegan)
-        seed_size = (1, 512)
+        seed_size = 512
     else:
         pass
 
-    seeds_list = [np.random.normal(size=seed_size) for _ in range(IMAGES_NUMBER)]
+    seeds_list = [np.float32(np.random.normal(size=seed_size)) for _ in range(IMAGES_NUMBER)]
     images_list = []
     model_str = database_enum[msg.text]
     for idx, seed in enumerate(seeds_list):
@@ -103,7 +103,6 @@ async def generation_stylegan(msg: Message):
     IMAGES_COLS = 3
     TEXT_SIZE = 16
     TEXT_FILL = (255, 255, 255)
-    FONT = ImageFont.load_default()
     SPACING_SIZE = 10
     BORDER_SIZE = SPACING_SIZE // 4
     FONT = ImageFont.load_default(48)
