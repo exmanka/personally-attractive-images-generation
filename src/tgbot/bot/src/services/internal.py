@@ -1,17 +1,92 @@
 import asyncio
 import logging
 import datetime
+from io import BytesIO
 from babel import dates
+from PIL import Image, ImageDraw, ImageFont
 from aiogram.types import Message, MediaGroup, ReplyKeyboardMarkup, InlineKeyboardMarkup
 from aiogram.dispatcher import FSMContext
 from aiogram.utils.exceptions import MessageToDeleteNotFound, WrongFileIdentifier
-from src.keyboards import client_kb, admin_kb
 from src.database import postgres
-from src.services import aiomoney, localization as loc
-from bot_init import bot, ADMIN_ID, YOOMONEY_TOKEN, LOCALIZATION_LANGUAGE
+from src.services import api, localization as loc
+from bot_init import bot, ADMIN_ID, LOCALIZATION_LANGUAGE
 
 
 logger = logging.getLogger(__name__)
+
+
+async def get_generated_image(model: str,
+                              seed: list[float],
+                              resize_ratio: int = 2) -> Image.Image:
+    """Get generated image by API according to model by specified seed.
+
+    :param model: 'stylegan' | 'dcgan'
+    :param seed: seed to be passed to generator using API
+    :param resize_ration: div resize ration, defaults to 2
+    """
+    seed_bytes = seed.tobytes()
+    seed_file = {'seed': seed_bytes}
+
+    match model:
+        case 'dcgan':
+            pass
+        case 'stylegan3':
+            status_code, data = await api.post('http://stylegan-generator:8000/generate/', seed_file, __name__)
+    
+    if status_code == 200:
+        image = Image.open(BytesIO(data))
+        image = image.resize((image.width // resize_ratio, image.height // resize_ratio))
+    else:
+        image = Image.new('RGB', (512, 512), 'white')
+    
+    return image
+
+
+async def draw_image_number(image: Image.Image,
+                            number: int,
+                            text_size: int = 16,
+                            text_fill: tuple = (255, 255, 255)) -> Image.Image:
+    """Draw number on picture.
+
+    :param image: image where draw
+    :param number: number to draw
+    :param text_size: size of the text, defaults to 16
+    :param text_fill: color of the text, defaults to (255, 255, 255)
+    """
+    draw = ImageDraw.Draw(image)
+    draw.text((text_size, text_size), str(number), fill=text_fill, font=ImageFont.load_default())
+
+    return image
+
+
+async def create_general_image(images_list: list[Image.Image],
+                               image_rows: int = 4,
+                               image_cols: int = 3,
+                               spacing_size: int = 10,
+                               border_size: int = 2) -> BytesIO:
+    """Create general image from specified list of images."""    
+    image_width_max = max(img.width for img in images_list)
+    image_height_max = max(img.height for img in images_list)
+    final_image_width = (image_width_max + spacing_size) * image_cols
+    final_image_height = (image_height_max + spacing_size) * image_rows
+    final_image = Image.new('RGB', (final_image_width, final_image_height), 'white')
+
+    x_offset = border_size
+    y_offset = border_size
+    counter = 0
+    for img in images_list:
+        final_image.paste(img, (x_offset, y_offset))
+        x_offset += img.width + spacing_size
+        counter += 1
+        if counter % image_cols == 0:
+            x_offset = border_size
+            y_offset += img.height + spacing_size
+
+    final_image_bytes = BytesIO()
+    final_image.save(final_image_bytes, format='PNG')
+    final_image_bytes.seek(0)
+
+    return final_image_bytes
 
 
 async def convert_datetime(datatime_to_convert: datetime.datetime | None,

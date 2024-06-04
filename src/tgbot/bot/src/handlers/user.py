@@ -63,7 +63,7 @@ async def welcome_phone_verification(msg: Message, state: FSMContext):
 
         # Insert user into database
         user = msg.from_user
-        await postgres.insert_client(user.first_name, user.id, msg.contact.phone_number, user.last_name, user.username)
+        await postgres.insert_user(user.first_name, user.id, msg.contact.phone_number, user.last_name, user.username)
         
         # Notify client that phone verification is completed and return to user keyboard
         await msg.answer(loc.user.msgs['verify_number_ok'], 'HTML', reply_markup=user_kb.welcome)

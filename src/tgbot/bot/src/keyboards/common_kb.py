@@ -10,5 +10,8 @@ sex = ReplyKeyboardMarkup(resize_keyboard=True).\
     add(KeyboardButton(loc.common.btns['welcome_cancel']))
 
 model = ReplyKeyboardMarkup(resize_keyboard=True).\
-    add(KeyboardButton(loc.common.btns['model_stylegan'])).insert(KeyboardButton(loc.common.btns['model_dcgan'])).\
+    add(KeyboardButton(loc.common.btns['model_stylegan'])).insert(KeyboardButton(loc.common.btns['model_dcgan'])).insert(KeyboardButton(loc.common.btns['model_about'])).\
     add(KeyboardButton(loc.common.btns['welcome_cancel']))
+
+generation = ReplyKeyboardMarkup(resize_keyboard=True).\
+    add(KeyboardButton(loc.common.btns['model_cancel']))

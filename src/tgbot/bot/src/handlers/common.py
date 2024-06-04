@@ -3,13 +3,14 @@ import numpy as np
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 from aiogram import Dispatcher
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from src.keyboards import common_kb
 from src.states import common_fsm
 from src.database import postgres
-from src.services import api, localization as loc
+from src.services import api, internal, localization as loc
+from bot_init import bot
 
 
 logger = logging.getLogger(__name__)
@@ -21,24 +22,74 @@ async def fsm_cancel(msg: Message, state: FSMContext):
     await msg.answer(loc.common.msgs['return_to_main_menu'], parse_mode='HTML', reply_markup=common_kb.welcome)
 
 
-async def welcome_fsm_start(msg: Message):
-    """Start FSM for gathering user information."""
-    await msg.answer(loc.common.msgs['welcome_sex'], parse_mode='HTML', reply_markup=common_kb.sex)
-    await common_fsm.UserInfo.sex.set()
+async def welcome_fsm_start(msg: Message, state: FSMContext):
+    """Start FSM for gathering user information if client is not registered."""
+    if await postgres.is_user_registered(msg.from_user.id):
+        # await common_fsm.Model.selection.set()
+        await state.set_state(common_fsm.Model.selection)
+        await msg.answer(loc.common.msgs['model_selection'], parse_mode='HTML', reply_markup=common_kb.model)
+    else:
+        # await common_fsm.UserInfo.sex.set()
+        await state.set_state(common_fsm.UserInfo.sex)
+        await msg.answer(loc.common.msgs['welcome_sex'], parse_mode='HTML', reply_markup=common_kb.sex)
 
 
-async def welcome_fsm_sex(msg: Message):
+async def welcome_fsm_sex(msg: Message, state: FSMContext):
     """Gather sex (gender) information and add user to database."""
     database_enum = {loc.common.btns['welcome_sex_male']: 'male',
                      loc.common.btns['welcome_sex_female']: 'female',
                      loc.common.btns['welcome_sex_other']: 'other'}
-    
     user = msg.from_user
-    await postgres.insert_client(user.first_name, user.id, database_enum[msg.text], user.last_name, user.username)
+    await postgres.insert_user(user.first_name, user.id, database_enum[msg.text], user.last_name, user.username)
     
+    await state.set_state(common_fsm.Model.selection)
+    # await common_fsm.Model.selection.set()
     await msg.answer(loc.common.msgs['welcome_finish'], parse_mode='HTML')
     await msg.answer(loc.common.msgs['model_selection'], parse_mode='HTML', reply_markup=common_kb.model)
-    await common_fsm.Model.selection.set()
+
+
+async def generation_fsm_cancel(msg: Message, state: FSMContext):
+    """Cancel FSM state for generation and return to model menu."""
+    await state.set_state(common_fsm.Model.selection)
+    await msg.answer(loc.common.msgs['model_cancel'], parse_mode='HTML', reply_markup=common_kb.model)
+
+
+async def generation_fsm_start(msg: Message, state: FSMContext):
+    """Start FSM for images generation and generate images for the first step."""
+    await msg.answer(loc.common.msgs['model_generation_process'], parse_mode='HTML', reply_markup=ReplyKeyboardRemove())
+    await bot.send_chat_action(msg.from_user.id, 'typing')
+
+    IMAGES_NUMBER = 12
+    database_enum = {loc.common.btns['model_dcgan']: 'dcgan',
+                     loc.common.btns['model_stylegan']: 'stylegan3'}
+    
+    if msg.text == loc.common.btns['model_dcgan']:
+        await state.set_state(common_fsm.Model.generation_dcgan)
+        seed_size = (1, 100)
+    elif msg.text == loc.common.btns['model_stylegan']:
+        await state.set_state(common_fsm.Model.generation_stylegan)
+        seed_size = (1, 512)
+    else:
+        pass
+
+    seeds_list = [np.random.normal(size=seed_size) for _ in range(IMAGES_NUMBER)]
+    images_list = []
+    model_str = database_enum[msg.text]
+    for idx, seed in enumerate(seeds_list):
+        image = await internal.get_generated_image(model_str, seed)
+        image = await internal.draw_image_number(image, idx + 1)
+        images_list.append(image)
+
+    async with state.proxy() as data:
+        data['seeds_list'] = seeds_list
+        data['images_list'] = images_list
+        data['model_str'] = model_str
+        data['iter'] = 1
+
+    final_image = await internal.create_general_image(images_list)
+
+    await msg.answer_photo(final_image)
+    await msg.answer(loc.common.msgs['model_generation_info'], parse_mode='HTML', reply_markup=common_kb.generation)
 
 
 async def generation_stylegan(msg: Message):
@@ -94,24 +145,14 @@ async def generation_stylegan(msg: Message):
     await msg.answer_photo(final_image_bytes)
 
 
-# async def generation_stylegan(msg: Message):
-#     """Test."""
-#     seed = np.random.rand(10, 10).astype(np.float32)
-#     seed_bytes = seed.tobytes()
+async def about_models(msg: Message):
+    """Send message with information about models."""
+    await msg.answer(loc.common.msgs['model_about'], 'HTML')
 
-#     seed_file = {'seed': seed_bytes}
 
-#     status_code, data = await api.post('http://stylegan-generator:8000/generator/', seed_file, __name__)
-
-#     # If HTTP status is 200 (OK)
-#     if status_code == 200:
-#         image_bytes = BytesIO(data)
-#         image_bytes.seek(0)
-#         await msg.answer_photo(image_bytes)
-
-#     # If got another HTTP status
-#     else:
-#         await msg.answer(f'Ошибка: {status_code}')
+async def about_project(msg: Message):
+    """Send message with information about project."""
+    await msg.answer(loc.common.msgs['about_project'], 'HTML')
 
 
 async def command_restart(msg: Message, state: FSMContext = None):
@@ -137,8 +178,13 @@ async def unrecognized_messages(msg: Message):
 
 def register_handlers(dp: Dispatcher):
     """Register shared handlers in dispatcher."""
-    dp.register_message_handler(fsm_cancel, Text(loc.common.btns['welcome_cancel'], ignore_case=True), state=[None, common_fsm.Model.selection])
-    dp.register_message_handler(welcome_fsm_start, Text(loc.common.btns['welcome_model_selection'], ignore_case=True))
+    dp.register_message_handler(fsm_cancel, Text(loc.common.btns['welcome_cancel']), state=[None, common_fsm.UserInfo.sex, common_fsm.Model.selection])
+    dp.register_message_handler(welcome_fsm_start, Text(loc.common.btns['welcome_start']))
+    dp.register_message_handler(welcome_fsm_sex, Text([loc.common.btns[key] for key in ('welcome_sex_male', 'welcome_sex_female', 'welcome_sex_other')]), state=common_fsm.UserInfo.sex)
+    dp.register_message_handler(about_models, Text(loc.common.btns['model_about']), state=[None, common_fsm.Model.selection])
+    dp.register_message_handler(about_project, Text(loc.common.btns['welcome_about_project']), state=None)
+    dp.register_message_handler(generation_fsm_cancel, Text(loc.common.btns['model_cancel']), state=[None, common_fsm.Model.generation_dcgan, common_fsm.Model.generation_stylegan])
+    dp.register_message_handler(generation_fsm_start, Text([loc.common.btns[key] for key in ('model_dcgan', 'model_stylegan')]), state=[None, common_fsm.Model.selection])
     dp.register_message_handler(generation_stylegan, commands=['test'], state='*')
     dp.register_message_handler(command_restart, commands=['restart'], state='*')
     dp.register_message_handler(command_start, commands=['start'], state='*')

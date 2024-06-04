@@ -26,7 +26,7 @@ async def asyncpg_close() -> None:
         logger.info('Database has been successfully disconnected!')
 
 
-async def insert_client(name: str,
+async def insert_user(name: str,
                         telegram_id: int,
                         sex: str,
                         surname: str | None = None,
@@ -39,7 +39,7 @@ async def insert_client(name: str,
     
     return await conn.fetchval(
         '''
-        INSERT INTO clients (name, surname, username, telegram_id, sex)
+        INSERT INTO users (name, surname, username, telegram_id, sex)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING id;
         ''',
@@ -52,7 +52,7 @@ async def is_user_registered(telegram_id: int) -> bool | None:
     return await conn.fetchval(
         '''
         SELECT TRUE
-        FROM clients
+        FROM users
         WHERE telegram_id = $1;
         ''',
         telegram_id
