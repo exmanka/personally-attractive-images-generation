@@ -13,8 +13,11 @@
             "model_about": "Здесь находится информация о моделях",
             "model_selection": "Это выбор модели",
             "model_generation_error": "Произошла ошибка {0}, повторяю",
-            "model_generation_info": "Здесь находится информация о генерации и этапах",
             "model_generation_process": "Началась генерация, подождите",
+            "model_generation_in_process": "Пожалуйста, подождите! Идет процесс генерации изображений. Если вы хотите прервать генерацию, используйте экранную клавиатуру или пропишите /restart",
+            "model_generation_feedback_attractive": "Введите фидбек по наиболее привлекательному изображению",
+            "model_generation_feedback_unattractive": "Введите фидбек по наиболее непривлекательному изображению",
+            "model_generation_feedback_incorrect_input": "Что-то введено неправильно!",
             "return_to_main_menu": "<i>Возвращаю в главное меню</i>"
         },
 

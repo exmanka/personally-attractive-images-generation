@@ -10,5 +10,7 @@ class Model(StatesGroup):
     """FSM states for model selection and usage."""
     information = State()
     selection = State()
-    generation_dcgan = State()
-    generation_stylegan = State()
+    generation_in_process = State()
+    generation_feedback_attractive = State()
+    generation_feedback_unattractive = State()
+    generation_generate = State()
