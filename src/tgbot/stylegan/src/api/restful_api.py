@@ -2,27 +2,12 @@ import logging
 import uvicorn
 import io
 import numpy as np
-import random
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from enum import Enum
-from PIL import Image
 from src.model import stylegan
 
 
 logger = logging.getLogger(__name__)
-
-
-class StatusEnum(Enum):
-    success = 'success'
-    error = 'error'
-
-
-# class PatternAlgo(BaseModel):
-#     status: StatusEnum
-#     data: object | None = None
-#     details: str | None = None
 
 
 app = FastAPI(

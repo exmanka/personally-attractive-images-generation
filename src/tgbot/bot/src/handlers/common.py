@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 import re
+from io import BytesIO
 from aiogram import Dispatcher
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
@@ -9,16 +10,10 @@ from src.keyboards import common_kb
 from src.states import common_fsm
 from src.database import postgres
 from src.services import internal, localization as loc
-from bot_init import bot
+from bot_init import bot, IMAGES_ROWS, IMAGES_COLS, IMAGES_NUMBER, SCORE_BASIC, STAGES_NUMBER
 
 
 logger = logging.getLogger(__name__)
-
-
-IMAGES_ROWS = 4
-IMAGES_COLS = 3
-IMAGES_NUMBER = IMAGES_ROWS * IMAGES_COLS
-SCORE_BASIC = 1.6
 
 
 async def fsm_cancel(msg: Message, state: FSMContext):
@@ -34,6 +29,7 @@ async def welcome_fsm_start(msg: Message, state: FSMContext):
         await msg.answer(loc.common.msgs['model_selection'], parse_mode='HTML', reply_markup=common_kb.model)
     else:
         await state.set_state(common_fsm.UserInfo.sex)
+        await msg.answer(loc.common.msgs['welcome_gather_info'], parse_mode='HTML')
         await msg.answer(loc.common.msgs['welcome_sex'], parse_mode='HTML', reply_markup=common_kb.sex)
 
 
@@ -60,10 +56,14 @@ async def generation_fsm_cancel(msg: Message, state: FSMContext):
 async def generation_fsm_start(msg: Message, state: FSMContext):
     """Start FSM for images generation and generate images for the first step."""
     if msg.text == loc.common.btns['model_dcgan']:
-        await msg.answer('К сожалению, модель DCGAN пока что недоступна в виду аппаратных ограничений')
+        await msg.answer('👾 <b>К сожалению, модель DCGAN пока что недоступна в виду аппаратных ограничений!</b>', parse_mode='HTML')
         return
     await state.set_state(common_fsm.Model.generation_in_process)
-    await msg.answer(loc.common.msgs['model_generation_process'], parse_mode='HTML', reply_markup=common_kb.generation)
+
+    async with state.proxy() as data:
+        data['stage'] = 1
+        await msg.answer(loc.common.msgs['model_generation_process'].format(data['stage'], STAGES_NUMBER), parse_mode='HTML', reply_markup=common_kb.generation)
+    
     await bot.send_chat_action(msg.from_user.id, 'typing')
 
     database_enum = {loc.common.btns['model_dcgan']: 'dcgan',
@@ -86,7 +86,6 @@ async def generation_fsm_start(msg: Message, state: FSMContext):
         data['seeds_list'] = seeds_list
         data['images_list'] = images_list
         data['model_str'] = model_str
-        data['iter'] = 0
         data['attractive_list'] = []
         data['unattractive_list'] = []
 
@@ -127,26 +126,60 @@ async def generation_feedback_unattractive(msg: Message, state: FSMContext):
 
 async def generation_generate(msg: Message, state: FSMContext):
     """Generate images using NVIDIA StyleGAN 3 for all steps except the first one."""
+    async with state.proxy() as data:
+        data['stage'] += 1
+
+        if data['stage'] > STAGES_NUMBER:
+            await msg.answer(loc.common.msgs['model_generation_end'], parse_mode='HTML')
+
+            first_image_bytes = BytesIO()
+            data['attractive_list'][0][0].save(first_image_bytes, format='PNG')
+            first_image_bytes.seek(0)
+            await msg.answer_photo(first_image_bytes, caption=loc.common.msgs['model_generation_end_score_first'].format(data['attractive_list'][0][2]), parse_mode='HTML')
+
+            second_image_bytes = BytesIO()
+            data['attractive_list'][1][0].save(second_image_bytes, format='PNG')
+            second_image_bytes.seek(0)
+            await msg.answer_photo(second_image_bytes, caption=loc.common.msgs['model_generation_end_score_second'].format(data['attractive_list'][1][2]), parse_mode='HTML')
+
+            last_image_bytes = BytesIO()
+            data['attractive_list'][STAGES_NUMBER - 1][0].save(last_image_bytes, format='PNG')
+            last_image_bytes.seek(0)
+            await msg.answer_photo(last_image_bytes, caption=loc.common.msgs['model_generation_end_score_last'].format(data['attractive_list'][STAGES_NUMBER - 1][2]), parse_mode='HTML')
+
+            await state.finish()
+            await state.set_state(common_fsm.Model.selection)
+            await msg.answer(loc.common.msgs['model_generation_thanks'], parse_mode='HTML', reply_markup=common_kb.model)
+
+            return
+    
     await state.set_state(common_fsm.Model.generation_in_process)
-    await msg.answer(loc.common.msgs['model_generation_process'], parse_mode='HTML', reply_markup=common_kb.generation)
+
+    async with state.proxy() as data:
+        await msg.answer(loc.common.msgs['model_generation_process'].format(data['stage'], STAGES_NUMBER), parse_mode='HTML', reply_markup=common_kb.generation)
+    
     await bot.send_chat_action(msg.from_user.id, 'typing')
 
     async with state.proxy() as data:
-        best_seed = np.zeros(data['seed_size'], dtype=np.float32)
-        score_sum = 0
-        for [_, seed, score] in data['attractive_list']:
-            best_seed += np.array(seed, dtype=np.float32) * SCORE_BASIC ** score
-            score_sum += SCORE_BASIC ** score
-        best_seed /= score_sum
+        if data['stage'] == 2:
+            seeds_list = [(np.float32(np.random.normal(size=data['seed_size']))).tolist() for _ in range(IMAGES_NUMBER)]
 
-        seeds_list = []
-        for i in range(IMAGES_ROWS - 1):
+        else:
+            best_seed = np.zeros(data['seed_size'], dtype=np.float32)
+            score_sum = 0
+            for [_, seed, score] in data['attractive_list']:
+                best_seed += np.array(seed, dtype=np.float32) * SCORE_BASIC ** score
+                score_sum += SCORE_BASIC ** score
+            best_seed /= score_sum
+
+            seeds_list = []
+            for i in range(IMAGES_ROWS - 1):
+                for _ in range(IMAGES_COLS):
+                    noise = np.float32(np.random.normal(scale=((i + 1) ** 2 * .1), size=data['seed_size']))
+                    seeds_list.append((best_seed + noise).tolist())
+
             for _ in range(IMAGES_COLS):
-                noise = np.float32(np.random.normal(scale=((i + 1) ** 2 * .1), size=data['seed_size']))
-                seeds_list.append((best_seed + noise).tolist())
-
-        for _ in range(IMAGES_COLS):
-            seeds_list.append((np.float32(np.random.normal(size=data['seed_size']))).tolist())
+                seeds_list.append((np.float32(np.random.normal(size=data['seed_size']))).tolist())
 
         images_list = []
         for idx, seed in enumerate(seeds_list):
@@ -156,7 +189,6 @@ async def generation_generate(msg: Message, state: FSMContext):
 
         data['seeds_list'] = seeds_list
         data['images_list'] = images_list
-        data['iter'] += 1
 
     final_image = await internal.create_general_image(images_list, IMAGES_ROWS, IMAGES_COLS)
 
@@ -180,10 +212,10 @@ async def about_project(msg: Message):
     await msg.answer(loc.common.msgs['about_project'], 'HTML')
 
 
-async def command_restart(msg: Message, state: FSMContext = None):
+async def command_restart(msg: Message, state: FSMContext):
     """Restart bot and send message when /restart command is pressed."""
-    await msg.answer(loc.common.msgs['restart'], 'HTML', reply_markup=common_kb.welcome)
     await state.finish()
+    await msg.answer(loc.common.msgs['restart'], 'HTML', reply_markup=common_kb.welcome)
 
 
 async def command_help(msg: Message):
@@ -191,8 +223,9 @@ async def command_help(msg: Message):
     await msg.answer(loc.common.msgs['help'], 'HTML')
 
 
-async def command_start(msg: Message):
+async def command_start(msg: Message, state: FSMContext):
     """Send message when /start command is pressed."""
+    await state.finish()
     await msg.answer(loc.common.msgs['start'], 'HTML', reply_markup=common_kb.welcome)
 
 
@@ -221,10 +254,10 @@ def register_handlers(dp: Dispatcher):
     dp.register_message_handler(generation_fsm_start, Text([loc.common.btns[key] for key in ('model_dcgan',
                                                                                              'model_stylegan')]),
                                                                                              state=[None, common_fsm.Model.selection])
-    dp.register_message_handler(generation_feedback_attractive, state=common_fsm.Model.generation_feedback_attractive)
-    dp.register_message_handler(generation_feedback_unattractive, state=common_fsm.Model.generation_feedback_unattractive)
-    dp.register_message_handler(generation_in_process, state=common_fsm.Model.generation_in_process)
     dp.register_message_handler(command_restart, commands=['restart'], state='*')
     dp.register_message_handler(command_start, commands=['start'], state='*')
     dp.register_message_handler(command_help, commands=['help'], state='*')
+    dp.register_message_handler(generation_feedback_attractive, state=common_fsm.Model.generation_feedback_attractive)
+    dp.register_message_handler(generation_feedback_unattractive, state=common_fsm.Model.generation_feedback_unattractive)
+    dp.register_message_handler(generation_in_process, state=common_fsm.Model.generation_in_process)
     dp.register_message_handler(unrecognized_messages, state="*")
