@@ -10,7 +10,7 @@ conn: asyncpg.Connection
 async def asyncpg_connect() -> None:
     """Initialize asyncpg connection."""
     global conn
-    conn = await asyncpg.connect(host='database', database=POSTGRES_DB, user=POSTGRES_USER, password=POSTGRES_PASSWORD)
+    conn = await asyncpg.connect(host='postgres', database=POSTGRES_DB, user=POSTGRES_USER, password=POSTGRES_PASSWORD)
 
     if conn:
         logger.info('Database has been successfully connected!')
